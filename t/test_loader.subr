@@ -1,0 +1,139 @@
+#!/bin/ksh
+# test_loader.subr
+# Run a simple test
+# By J. Stuart McMurray
+# Created 20250727
+# Last Modified 20250730
+
+set -euo pipefail
+
+. t/shmore.subr
+
+# Handy variables
+LIB=lib.so                  # Library we're loading
+LOADER=test_loader          # Name of the test loader program, needs ./
+LOADER_STDERR=loader_stderr # File with loader's stderr
+MAPS_AFTER=maps_after       # /proc/self/maps after loading $LIB
+MAPS_BEFORE=maps_before     # /proc/self/maps before loading $LIB
+
+# test_load tests loading a library.  It copies the files from
+# t/testdata/TESTNAME, where TESTNAME is derived from $0 (hence the POSIX-style
+# function) to a temporary directory along with sneaky_remap.{c,h},
+# t/comman.mk, and the test loader from t/testdata/test_loader, builds the
+# library with bmake lib.so, and loads it with test_loader.
+#
+# The compile-time-settable macro SRSFLAGS can be used to pass flags to
+# sneaky_remap_start.  See unlink.t for an example.
+#
+# The loader creates two files, $MAPS_BEFORE and $MAPS_AFTER, which are copies
+# of /proc/self/maps before and after dlopen()ing $LIB.  They will be checked
+# to make sure no new mapped files appear.
+# 
+# If $1 is set, the loader's output will be checked to see if it matches.  If
+# not, the loader's output will be sent to the function's stdout.
+#
+# test_load emits two TAP lines or three if $1 is set.  Calls to tap_plan must
+# account for this.  tap_load also sets the EXIT trap to remove a temporary
+# directory.  Callers must also account for this.
+#
+# After returning, $TMPD will hold the path to the temporary directory in which
+# the library was built and loader was run and $LOADER_STDERR holds the name of
+# a file in $TMPD with the loader's stderr.  The current working directory will
+# be $TMPD.
+# 
+# Arguments:
+# $0 - Test script name (not function name)
+# $1 - What we expect the loader to print or an empty string to send loader
+#      output to stdout.
+# $2 - Caller line ($LINENO, for tap_*)
+test_loader() {
+        set -euo pipefail
+
+        # Work out our name, what we're building, and so on.
+        typeset _script_name=$0 _want=$1 _lineno=$2
+        typeset _test_name=$(basename "$0") _test_name=${_test_name%.t}
+
+        # Temporary directory to hold it all, if we're not there already.
+        if [[ -z "${TMPD-""}" ]]; then
+                # Make sure we have the loader.
+                bmake -C t/testdata/test_loader "$LOADER"
+                
+                # Temporary directory things.
+                TMPD=$(mktemp -d)
+                trap 'rm -rf $TMPD; tap_done_testing' EXIT
+                cp                                       \
+                        sneaky_remap.c                   \
+                        sneaky_remap.go                  \
+                        sneaky_remap.h                   \
+                        t/common.mk                      \
+                        t/testdata/test_loader/"$LOADER" \
+                        "$TMPD"
+                if [[ -d t/testdata/"$_test_name" ]]; then
+                        cp -r t/testdata/"$_test_name"/* "$TMPD"
+                else
+                        cp t/testdata/test_loader/lib.c "$TMPD"
+                fi
+                cd "$TMPD"
+        fi
+
+        # Make the loadable library plus whatever else needs making.
+        if [[ ! -f ./Makefile ]]; then
+                bmake -f ./common.mk "$LIB"
+        else
+                bmake "$LIB"
+        fi
+
+        # Load the library and see if it all went to plan.  Entirely possible
+        # it should fail.  If so, we'd like its return staus.
+        set +e
+        typeset _got _ret
+        _got=$("./$LOADER" "./$LIB" 2>$LOADER_STDERR)
+        _ret=$?
+        set -e
+        tap_is $_ret 0 "Loader exited happily" "$0" "$_lineno"
+        if [[ 0 -ne $_ret ]]; then
+                tap_diag "Loader stderr:"
+                tap_diag "$(<"./$LOADER_STDERR")"
+        fi
+
+        # Make sure the loader actually made the expected files.
+        if [[ ! -f "$MAPS_BEFORE" ]]; then
+                tap_fail "File not created: $MAPS_BEFORE" "$0" "$_lineno"
+        elif [[ ! -f "$MAPS_AFTER" ]]; then
+                tap_fail "File not created: $MAPS_AFTER" "$0" "$_lineno"
+        else
+                no_new_mapped_files                                 \
+                        "$MAPS_BEFORE" "$MAPS_AFTER"                \
+                        "No new mapped files after loading library" \
+                        "$_lineno"
+        fi
+
+
+        # If we have a WANT, see if we GOT it.
+        if [[ -n "$_want" ]]; then
+                tap_is "$_got" "$_want" "Loader output correct" "$0" "$_lineno"
+        else 
+                print -nr "$_got"
+        fi
+}
+
+# no_new_mapped_files wraps tap_is and checks if the files $2 and $3, which
+# must be copies of /proc/pid/maps, have the same set of mapped files.
+#
+# Arguments:
+# $0 - Test script name (not function name)
+# $1 - Want maps (before)
+# $2 - Got maps (after)
+# $3 - Test name
+# $2 - Caller line ($LINENO, for tap_*)
+no_new_mapped_files() {
+        # Make sure we didn't gain or lose any libraries.
+        function extract_files {
+                awk '"" != $6 && "[heap]" != $6 {print $6}' | sort -u;
+        }
+        typeset _files_before=$(extract_files <"$1") \
+                _files_after=$( extract_files <"$2")
+        tap_is "$_files_after" "$_files_before" "$3" "$0" $LINENO
+}
+
+# vim: ft=sh
