@@ -3,11 +3,12 @@
  * Sneakily remap this shared object file to avoid being seen in /proc/pid/maps
  * By J. Stuart McMurray
  * Created 20250725
- * Last Modified 20250730
+ * Last Modified 20250808
  */
 
 #define _GNU_SOURCE
 
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 
 #include <dlfcn.h>
@@ -67,7 +68,9 @@ struct map {
 static int filter_mapped_files(struct map *maps, int *nmaps, char *path);
 static int find_our_path(      struct map *maps, int  nmaps, struct map *pmap);
 static int overmap_files(      struct map *maps, int *nmaps);
+static int overmap_map(        struct map *map , int  pfd[2]);
 static int read_mapped_files(  struct map *maps, int *nmaps);
+static int remap_map(          struct map *map , int  pfd[2], uintptr_t mem);
 
 /* sneaky_remap_start shuffles memory around to remove this shared object
  * file's path from /proc/self/maps and then starts start_routine in its own
@@ -307,38 +310,119 @@ filter_mapped_files(struct map *maps, int *nmaps, char *path)
 static int
 overmap_files(struct map *maps, int *nmaps)
 {
-        int   i;
-        void *p;
+        int i;
+        int pipefd[2];
+        int ret;
+        int saved_errno;
+
+        /* We'll use this pipe for testing if memory is readable. */
+        if (-1 == pipe(pipefd))
+                D_RET_ERRNO("pipe");
 
         /* Remap ALL the maps! */
+        ret = SREM_RET_OK;
         for (i = 0; i < *nmaps; ++i) {
-                DPRINTF("Remapping 0x%lx bytes for %p...", maps[i].length,
-                                VOIDP(maps[i].start));
-
-                /* Grab a chunk of memory. */
-                if (MAP_FAILED == (p = mmap(NULL, maps[i].length, PROT_WRITE,
-                                                MAP_PRIVATE|MAP_ANON,
-                                                -1, 0)))
-                        D_RET_ERRNO("mmap (0x%lx)", maps[i].length);
-
-                /* Copy over this chunk, despite the name. */
-                memmove(p, VOIDP(maps[i].start), maps[i].length);
-                
-                /* Set permissions to what they should be. */
-                if (-1 == mprotect(p, maps[i].length, maps[i].prot))
-                        D_RET_ERRNO("mprotect");
-
-                /* Remap it back into place and release the old map. */
-                if (MAP_FAILED == (mremap(p, maps[i].length, maps[i].length,
-                                                MREMAP_MAYMOVE|MREMAP_FIXED,
-                                                maps[i].start)))
-                        D_RET_ERRNO("mremap (%p)", VOIDP(maps[i].start));
-                if (-1 == munmap(p, maps[i].length))
-                        D_RET_ERRNO("munmap (0x%lx)", maps[i].length);
-
-                DPRINTF("ok :)\n");
+                if (SREM_RET_OK != (ret = overmap_map(&maps[i], pipefd)))
+                        goto out;
         }
+
+out:
+        saved_errno = errno;
+        close(pipefd[0]);
+        close(pipefd[1]);
+        errno = saved_errno;
+        return ret;
+
+}
+
+/* overmap_map copies a map to another address, then mremaps it back in
+ * place.  pipefd should be a pipe, used for testing memory reads. */
+static int
+overmap_map(struct map *map, int pfd[2])
+{
+        int   ret;
+        void *p;
+
+        DPRINTF("Remapping 0x%lx bytes for %p...", map->length,
+                        VOIDP(map->start));
+
+        /* Make sure we can read this map. */
+        if (0 == map->prot)
+                if (-1 == mprotect(VOIDP(map->start), map->length,
+                                        map->prot|PROT_READ))
+                        D_RET_ERRNO("mprotect (add read)");
+
+        /* Grab a chunk of memory. */
+        if (MAP_FAILED == (p = mmap(NULL, map->length, PROT_WRITE,
+                                        MAP_PRIVATE|MAP_ANON, -1, 0)))
+                D_RET_ERRNO("mmap (0x%lx)", map->length);
+
+        /* Copy over each page.  We do this to skip pages we're not
+         * going to be able to read. */
+        if (SREM_RET_OK != (ret = remap_map(map, pfd, (uintptr_t)p)))
+                return ret;
+
+        /* Set permissions to what they should be. */
+        if (-1 == mprotect(p, map->length, map->prot))
+                D_RET_ERRNO("mprotect (set)");
+
+        /* Remap it back into place and release the old map. */
+        if (MAP_FAILED == (mremap(p, map->length, map->length,
+                                        MREMAP_MAYMOVE|MREMAP_FIXED,
+                                        map->start)))
+                D_RET_ERRNO("mremap (%p)", VOIDP(map->start));
+        if (-1 == munmap(p, map->length))
+                D_RET_ERRNO("munmap (0x%lx)", map->length);
+
+        DPRINTF("ok :)\n");
 
         return SREM_RET_OK;
 }
 
+/* remap_map copies the memory described by map to mem, one page at a
+ * time, skipping unreadable pages.  Ecah page is tested by writing to
+ * the pipe pfd[1], with a corresponding read from pfd[0] to clear the pipe. */
+static int
+remap_map(struct map *map, int pfd[2], uintptr_t mem)
+{
+        int       psz; /* Pagesize. */
+        int       ret; /* Returned int. */
+        size_t    len; /* Copy length, probably a page. */
+        ssize_t   nip; /* Number of bytes in the pipe. */
+        uint8_t   buf; /* Pipe drain. */
+        uintptr_t dst; /* Per-page copy destination addres. */
+        uintptr_t off; /* Per-page copy offset. */
+        uintptr_t src; /* Per-page copy source address. */
+
+        psz = getpagesize();
+
+        /* Copy ALL the pages! */
+        for (off = 0; off < map->length; off += psz) {
+                /* Work out where we're copying. */
+                src = map->start + off;
+                dst = mem + off;
+
+                /* Work out how much to copy. */
+                len = psz;
+                if ((src + len) > (map->start + map->length)) {
+                        len = (map->start + map->length) - src;
+                }
+
+                /* See if this page is readable. */
+                ret = 0;
+                if (-1 == (nip = write(pfd[1], (uint8_t *)src, 1))) {
+                        if (EFAULT != errno) /* A real error. */
+                                D_RET_ERRNO("write");
+                        continue;
+                }
+                /* Remove our read-checking byte. */
+                if (-1 == (ret = read(pfd[0], &buf, nip)) || 0 == ret)
+                        D_RET_ERRNO("read");
+
+                /* Copy the page.  The rest of this function's entire existence
+                 * is to ensure this one line works. */
+                memcpy(VOIDP(dst), VOIDP(src), len);
+        }
+
+        return SREM_RET_OK;
+}
