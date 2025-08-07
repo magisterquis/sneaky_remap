@@ -3,7 +3,7 @@
  * Just hide the library
  * By J. Stuart McMurray
  * Created 20250728
- * Last Modified 20250730
+ * Last Modified 20250808
  */
 
 #include <err.h>
@@ -29,10 +29,8 @@ ctor(void)
                 case SREM_RET_OK: /* Good. */
                         break;
                 case SREM_RET_ERRNO: /* Not our fault, at least? */
-                        warn("sneaky_remap_start");
-                        break;
+                        err(10, "sneaky_remap_start");
                 default:
-                        warnx("sneaky_remap error %d", ret);
-                        break;
+                        errx(11, "sneaky_remap error %d", ret);
         }
 }
