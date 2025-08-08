@@ -4,13 +4,13 @@
 # Check that debug output looks right in the happy case
 # By J. Stuart McMurray
 # Created 20250728
-# Last Modified 20250804
+# Last Modified 20250809
 
 set -euo pipefail
 
 . ./t/shmore.subr
 
-tap_plan 33
+tap_plan 34
 
 CDIR=$(dirname $0)
 CDIR=${CDIR%/t}     # Directory with the code we're testing.
@@ -22,7 +22,18 @@ TMPD=$(mktemp -d)   # Temporary directory for test files.
 trap 'rm -rf $TMPD; tap_done_testing' EXIT
 
 # Get curlrevshell and start it going.
-GOBIN=$TMPD go install -v github.com/magisterquis/curlrevshell@bettertemplates
+set +e
+GOBIN=$TMPD go install \
+        -ldflags "-w -s" \
+        -trimpath \
+        github.com/magisterquis/curlrevshell@bettertemplates >go.out 2>&1
+RET=$?
+set -e
+tap_ok $RET "curlrevshell installed ok" "$0" $LINENO
+if [[ 0 -ne $RET ]]; then
+        tap_diag "$(<go.out)"
+        exit 12
+fi
 CRS=$TMPD/curlrevshell
 [[ -x "$CRS" ]]
 tap_pass "Got curlrevshell"
