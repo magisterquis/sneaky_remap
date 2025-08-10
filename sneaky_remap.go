@@ -13,7 +13,7 @@
 //
 // There is no exposed (Go) API.  It is sufficient to simply the package, e.g.:
 //
-//	import _ "github.com/magisterquis/sneaky_remap"
+//	import _ "github.com/magisterquis/sneaky_remap_preview"
 //
 // # Configuration
 //
@@ -37,7 +37,7 @@ package sneaky_remap
  * Hide a shared object file from /proc/pid/maps
  * By J. Stuart McMurray
  * Created 20250730
- * Last Modified 20250804
+ * Last Modified 20250810
  */
 
 // #include <err.h>
