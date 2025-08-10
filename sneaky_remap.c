@@ -368,10 +368,10 @@ overmap_map(struct map *map, int pfd[2])
 
         /* Remap it back into place and release the old map. */
         if (MAP_FAILED == (mremap(p, map->length, map->length,
-                                        MREMAP_MAYMOVE|MREMAP_FIXED,
+                                        MREMAP_FIXED|MREMAP_MAYMOVE,
                                         map->start)))
                 D_RET_ERRNO("mremap (%p)", VOIDP(map->start));
-        if (-1 == munmap(p, map->length))
+        if (-1 == munmap(p, map->length)) /* For just in case. */
                 D_RET_ERRNO("munmap (0x%lx)", map->length);
 
         DPRINTF("ok :)\n");
