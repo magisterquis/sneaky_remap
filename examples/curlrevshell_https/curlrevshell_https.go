@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/magisterquis/sneaky_remap"
+	_ "github.com/magisterquis/sneaky_remap_preview"
 )
 
 // Compile-time config.
