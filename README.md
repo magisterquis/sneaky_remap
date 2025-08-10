@@ -1,20 +1,38 @@
 `sneaky_remap`
 ==============
-Sneakily remap an injected shared object file to hide in `/proc/pid/maps` on
-Linux.
+Sneakily hide the name of a loaded shared object file (library) on Linux, with
+a minimum of fuss.
+Code works with [C](#quickstart-c), [Go](#quickstart-go), and likely any other
+C-friendly language.
 
-For Go usage, see https://pkg.go.dev/github.com/magisterquis/sneaky_remap and
-[`sneaky_remap.go`](./sneaky_remap.go).
+The general idea is the library to be hidden links in code from this
+repository, calls `sneaky_remap_start` shortly after being loaded or injected,
+and anything nosing about `/proc/pid` has a bit of extra difficulty working out
+what's going on.
+
+Removes the filename from...
+- `/proc/pid/map_files` # TODO: Validate this
+- `/proc/pid/maps`
+- `/proc/pid/numa_maps`
+- `/proc/pid/smaps`
+
+Please also see the [Theory](#theory) section for details about how it works
+under the hood,
+copy/paste-friendly [examples](./examples),
+and
+https://pkg.go.dev/github.com/magisterquis/sneaky_remap and
+[`sneaky_remap.go`](./sneaky_remap.go) for idiomatic(er) Go usage.
 
 For legal use only.
 
 Quickstart (C)
 --------------
 1. Copy [`sneaky_remap.c`](./sneaky_remap.c) and
-   [`sneaky_remap.h`](./sneaky_remap.h) somewhere where they'll be built.
-2. Call `sneaky_remap_start` before multiple threads will do anything with the
-   loaded library.  A constructor is an excellent place.  Something like the
-   following should do it:
+   [`sneaky_remap.h`](./sneaky_remap.h) somewhere where they'll be built into
+   the library to hide.
+2. Call [`sneaky_remap_start`](./sneaky_remap.h#L44) before any thread will do
+   anything with the loaded library.
+   Something along the lines the following should do it:
    ```c
    static void __attribute__((constructor))
    ctor(void)
@@ -33,8 +51,13 @@ Quickstart (C)
            }
    }
    ```
-3. Test thoroughly.  Make sure to look at `/proc/pid/maps` before and after
-   loading.
+3. Test thoroughly.
+   Make sure to look at `/proc/pid/maps` and friends before and after the
+   library is loaded.
+
+Quickstart (Go)
+---------------
+TODO: Finish this
 
 Theory
 ------
@@ -46,13 +69,26 @@ Theory
    the shared object file, unmapping the file in the process.
 3. Our library now shows up as anonymous memory in `/proc/pid/maps`.
 
-### Caveats
+Caveats
+-------
 1. If other threads are running, all of this is a bit dicey.
 2. The library is still visible for a short amount of time; if anything's
    watching calls to `open(2)` or `mmap(2)` they'll see us, though we may well
    win a race between being noticed and forensic data being collected.
 3. The mapped pages still have the ELF magic number in the beginning.  This may
    be fixable with an as-yet unimplemented `SREM_SRS_RMELF`.
+4. When linked into a shared object file written in Go, `sneaky_remap_start`
+   must be called before the Go runtime starts.
+   The easy way to do this is to use a constructor function with a lowish
+   priority, e.g.
+   ```c
+   static void __attribute__((constructor (1000)))
+   ctor(void)
+   {
+           /* Call sneaky_remap_start */
+   }
+   ```
+   The Go package does this for you.
 
 API
 ---
@@ -70,28 +106,50 @@ sneaky_remap_start(
 Works a bit like `pthread_create(3)`, but before doing anything else it does
 the memory-hidey trick described in the [Theory section](#Theory).
 
-After all of the hiding happens, if not `NULL`, `start_routine` is started in a
-detached thread.
+After all of the hiding happens, if `start_routine` is not `NULL`, it is
+started in a detached thread.
 
-Returns one of the `SREM_RET_*` constants in
+`sneaky_remap_start` returns one of the `SREM_RET_*` constants in
 [`sneaky_remap.h`](./sneaky_remap.h).  Of note, if `SREM_RET_ERRNO` is
 returned, `errno` may be used to determine the underlying error.
 
 #### Arguments
 1. `start_routine` and `arg`- Passed to `pthread_create(3)`.
-2. `flags` - One of the [`SREM_SRS_* Constants`](#SREM_SRS_-Constants).
+2. `flags` - A bitwise OR of the following constants, defined in
+   [`sneaky_remap.h`](./sneaky_remap.h).
+    - `SREM_SRS_DLOPEN` - Calls `dlopen(3)` on the library with `RTLD_NOW` to
+      prevent unwanted unloads (e.g. when using Bash's `enable`).
+    - `SREM_SRS_UNLINK` - `unlink(2)`s the shared object file after hiding it.
 
-### `SREM_SRS_*` Constants
-- `SREM_SRS_DLOPEN` - Calls `dlopen(3)` on the library with `RTLD_NOW` to
-  prevent unwanted unloads (e.g. when using Bash's `enable`).
-- `SREM_SRS_UNLINK` - `unlink(2)`s the shared object file after hiding it.
+#### Return Values
+`sneaky_remap_start` may return the following values, defined in
+[`sneaky_remap.h`](./sneaky_remap.h).
+Value                  | Description
+-----------------------|------------
+`SREM_RET_OK`          | All went well.
+`SREM_RET_ERRNO`       | `errno` will be set, use `warn(3)`/`err(3)`/etc.
+`SREM_RET_EPARSEMAPS`  | Error parsing `/proc/self/maps`.
+`SREM_RET_TOOMANYMAPS` | `/proc/self/maps` was too large.
+`SREM_RET_NOPATH`      | Couldn't find our own file's path.
+`SREM_RET_EDLOPEN`     | Couldn't dlopen ourselves.
+`SREM_RET_EMPTYPATH`   | Our own path was empty.
+`SREM_RET_BIGPATH`     | A path in `/proc/self/maps` was too long.
 
-### `SREM_DEBUG`
+
+### Compile-time configuration
+The following macros may be set at compile-time.
+
+#### `SREM_DEBUG`
 If defined, debug messages are printed to stderr, especially helpful during
 development.
 
 When not defined, the debug strings are not present in the compiled object code
 for a bit less fingerprintability.
+
+#### `SREM_MAX_MAPS`
+The maximum number of file-backed memory mappings inspected in
+`/proc/pid/maps`.
+Increase this if `sneaky_remap_start` returns `SREM_RET_TOOMANYMAPS`.
 
 Testing
 -------
@@ -99,8 +157,7 @@ Have a look in [`t/`](./t/) and [`examples/`](./examples/) for ideas for
 testing libraries which use `sneaky_remap`.
 
 Testing `sneaky_remap` itself requires quite a few dependencies:
-- bmake
-  - ...because I still haven't learned how to GNU Make
+- bmake (because I still haven't learned how to GNU Make)
 - cc
 - go
 - ksh
