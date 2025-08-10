@@ -1,0 +1,28 @@
+--- sneaky_remap.c	Sun Aug 10 17:30:22 2025
++++ sneaky_remap_plus_during.c	Sun Aug 10 17:28:50 2025
+@@ -366,6 +366,25 @@
+         if (-1 == mprotect(p, map->length, map->prot))
+                 D_RET_ERRNO("mprotect (set)");
+ 
++        /* Save the map right before we move it. */
++        char *cmd;
++        if (-1 == asprintf(&cmd,
++                "N=$((%p));"
++                "while read R X; do "
++                        "if [ "
++                                "$((0x${R%%-*})) -le $N "
++                        "] && [ "
++                                "$N -lt $((0x${R#*-})) "
++                        "]; then "
++                                "echo $R $X; "
++                        "fi; "
++                "done </proc/%d/maps >>maps_during", p, getpid()))
++                D_RET_ERRNO("asprintf");
++        ret = system(cmd);
++        free(cmd);
++        if (-1 == ret)
++                D_RET_ERRNO("system");
++
+         /* Remap it back into place and release the old map. */
+         if (MAP_FAILED == (mremap(p, map->length, map->length,
+                                         MREMAP_MAYMOVE|MREMAP_FIXED,

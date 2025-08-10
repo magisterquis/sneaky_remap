@@ -11,7 +11,7 @@ and anything nosing about `/proc/pid` has a bit of extra difficulty working out
 what's going on.
 
 Removes the filename from...
-- `/proc/pid/map_files` # TODO: Validate this
+- `/proc/pid/map_files`
 - `/proc/pid/maps`
 - `/proc/pid/numa_maps`
 - `/proc/pid/smaps`
@@ -62,13 +62,37 @@ TODO: Finish this
 Theory
 ------
 1. Libraries loaded with `dlopen(3)` are visible as mapped memory in
-   `/proc/self/maps`.  This isn't great for stealth.
-2. We copy the pages from our library's file to new anonymous pages, keeping
-   the same permissions.
-3. Very quickly, we atomically `mremap(2)` the copies back over the pages from
-   the shared object file, unmapping the file in the process.
-3. Our library now shows up as anonymous memory in `/proc/pid/maps`.
-
+   `/proc/self/maps`.  This isn't great for stealth.  Looks like this:
+   ```
+   7dfeee7c5000-7dfeee7c6000 r--p 00000000 00:2c 146314                     /tmp/tmp.govmrv0jiG/readme_theory.so
+   7dfeee7c6000-7dfeee7c7000 r-xp 00001000 00:2c 146314                     /tmp/tmp.govmrv0jiG/readme_theory.so
+   7dfeee7c7000-7dfeee7c8000 r--p 00002000 00:2c 146314                     /tmp/tmp.govmrv0jiG/readme_theory.so
+   7dfeee7c8000-7dfeee7c9000 r--p 00002000 00:2c 146314                     /tmp/tmp.govmrv0jiG/readme_theory.so
+   7dfeee7c9000-7dfeee7ca000 rw-p 00003000 00:2c 146314                     /tmp/tmp.govmrv0jiG/readme_theory.so
+   ```
+2. We copy the readable pages from our library's file to new anonymous pages,
+   keeping the same permissions.
+   Each new range ends up with the same contents and permissions, but at a
+   different address:
+   ```
+   7dfeee7c1000-7dfeee7c5000 rw-p 00000000 00:00 0
+   ```
+3. Very quickly, we `mremap(2)` the each copy back over the relevant pages from
+   the shared object file, unmapping the file in the process.  Lather, rinse,
+   repeat for every mapped range.
+   ```c
+   if (MAP_FAILED == (mremap(p, map->length, map->length,
+                                   MREMAP_FIXED|MREMAP_MAYMOVE,
+                                   map->start)))
+           D_RET_ERRNO("mremap (%p)", VOIDP(map->start));
+   ```
+3. Our library now shows up as anonymous memory in `/proc/pid/maps`:
+   ```
+   ffffab430000-ffffab432000 r-xp 00000000 00:00 0
+   ffffab432000-ffffab44f000 ---p 00000000 00:00 0
+   ffffab44f000-ffffab450000 r--p 00000000 00:00 0
+   ffffab450000-ffffab451000 rw-p 00000000 00:00 0
+   ```
 Caveats
 -------
 1. If other threads are running, all of this is a bit dicey.
@@ -89,6 +113,8 @@ Caveats
    }
    ```
    The Go package does this for you.
+5. Pages which were unreadable when the library was loaded (as happens on
+   aarch64), will no longer cause a SIGBUS when read after hiding.
 
 API
 ---
