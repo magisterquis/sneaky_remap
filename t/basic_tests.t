@@ -4,18 +4,21 @@
 # Make sure our code is up-to-date and doesn't have debug things.
 # By J. Stuart McMurray
 # Created 20250725
-# Last Modified 20250725
+# Last Modified 20250809
 
 set -uo pipefail
 
 . t/shmore.subr
 
-NTEST=4
+NTEST=5
 tap_plan "$NTEST"
 
 # Make sure we didn't leave any stray DEBUGs or TAP_TODOs lying about.
-GOT=$(grep -EInR '(#|\*)[[:space:]]*()DEBUG' | sort -u)
+GOT=$(grep -EInR '(#|\*|^)[[:space:]]*()DEBUG' | sort -u)
 tap_is "$GOT" "" "No files with DEBUG comments" "$0" $LINENO
+GOT=$(grep -EInR '(#|\*|^)[[:space:]]*()TODO' | sort -u |
+        grep -Ev '^t/shmore.subr:[[:digit:]]+:')
+tap_is "$GOT" "" "No files with TODO comments" "$0" $LINENO
 GOT=$(grep -EIn  'TAP_TODO[=]' t/*.t | sort -u)
 tap_is "$GOT" "" "No TAP_TODO's" "$0" $LINENO
 
