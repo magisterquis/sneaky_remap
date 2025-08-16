@@ -3,7 +3,7 @@
  * Sneakily remap this shared object file to avoid being seen in /proc/pid/maps
  * By J. Stuart McMurray
  * Created 20250725
- * Last Modified 20250808
+ * Last Modified 20250816
  */
 
 #define _GNU_SOURCE
@@ -12,6 +12,7 @@
 #include <sys/mman.h>
 
 #include <dlfcn.h>
+#include <elf.h>
 #include <errno.h>
 #include <limits.h>
 #include <pthread.h>
@@ -59,16 +60,17 @@
 
 /* struct map holds relevant info about mapped memory. */
 struct map {
-        char      path[PATH_MAX+1];
-        int       prot;
-        size_t    length;
-        uintptr_t start;
+        char          path[PATH_MAX+1];
+        int           prot;
+        size_t        length;
+        uintptr_t     start;
+        unsigned int  off; /* Offset in file. */
 };
 
-static int filter_mapped_files(struct map *maps, int *nmaps, char *path);
-static int find_our_path(      struct map *maps, int  nmaps, struct map *pmap);
-static int overmap_files(      struct map *maps, int *nmaps);
-static int overmap_map(        struct map *map , int  pfd[2]);
+static int filter_mapped_files(struct map *maps, int *nmaps,  char *path);
+static int find_our_path(      struct map *maps, int  nmaps,  struct map *pmap);
+static int overmap_files(      struct map *maps, int *nmaps,  int flags);
+static int overmap_map(        struct map *map , int  pfd[2], int flags);
 static int read_mapped_files(  struct map *maps, int *nmaps);
 static int remap_map(          struct map *map , int  pfd[2], uintptr_t mem);
 
@@ -100,7 +102,7 @@ sneaky_remap_start(void *(start_routine)(void *), void *arg, int flags)
                 return ret;
 
         /* Copy the mapped sections to somewhere else, then remap them back. */
-        if (SREM_RET_OK != (ret = overmap_files(maps, &nmaps)))
+        if (SREM_RET_OK != (ret = overmap_files(maps, &nmaps, flags)))
                 return ret;
 
         /* Increase the count of things which have us open, to keep bash from
@@ -110,15 +112,15 @@ sneaky_remap_start(void *(start_routine)(void *), void *arg, int flags)
                         DWARNX("dlopen %s: %s", pmap.path, dlerror());
                         return SREM_RET_EDLOPEN;
                 } else
-                        DPRINTF("dlopen success\n");
+                        DPRINTF("dlopen(3) success\n");
         }
 
         /* Save a potential call to rm(1). */
         if (flags & SREM_SRS_UNLINK) {
                 if (-1 == unlink(pmap.path))
-                        D_RET_ERRNO("unlink %s", pmap.path);
+                        D_RET_ERRNO("unlink(2) %s", pmap.path);
                 else
-                        DPRINTF("unlink success (%s)\n", pmap.path);
+                        DPRINTF("Unlink success (%s)\n", pmap.path);
         }
 
         DPRINTF("Invisibility cloak active!!!\n");
@@ -176,16 +178,17 @@ read_mapped_files(struct map *maps, int *nmaps) {
                 /* Get the important bits. */
                 bzero(&maps[*nmaps], sizeof(maps[*nmaps]));
                 sret = sscanf(line,
-                                "%lx-%lx %4c %*s %*s %*s %"xstr(PATH_MAX)"[\x01-\xff]",
+                                "%lx-%lx %4c %x %*s %*s %"xstr(PATH_MAX)"[\x01-\xff]",
                                 &maps[*nmaps].start,
                                 &end,
                                 prot,
+                                &maps[*nmaps].off,
                                 maps[*nmaps].path);
                 switch (sret) {
-                        case 3: /* Anonymous mapping, don't care. */
+                        case 4: /* Anonymous mapping, don't care. */
                                 (*nmaps)--;
                                 continue;
-                        case 4: /* Good. */
+                        case 5: /* Good. */
                                 break;
                         default: /* Bad line. */
                                 DWARNX("invalid maps line: %s", line);
@@ -308,7 +311,7 @@ filter_mapped_files(struct map *maps, int *nmaps, char *path)
 /* overmap_files copies the nmaps maps from maps to another address, then
  * mremaps them back in place. */
 static int
-overmap_files(struct map *maps, int *nmaps)
+overmap_files(struct map *maps, int *nmaps, int flags)
 {
         int i;
         int pipefd[2];
@@ -322,7 +325,8 @@ overmap_files(struct map *maps, int *nmaps)
         /* Remap ALL the maps! */
         ret = SREM_RET_OK;
         for (i = 0; i < *nmaps; ++i) {
-                if (SREM_RET_OK != (ret = overmap_map(&maps[i], pipefd)))
+                if (SREM_RET_OK != (ret = overmap_map(&maps[i], pipefd,
+                                                flags)))
                         goto out;
         }
 
@@ -338,7 +342,7 @@ out:
 /* overmap_map copies a map to another address, then mremaps it back in
  * place.  pipefd should be a pipe, used for testing memory reads. */
 static int
-overmap_map(struct map *map, int pfd[2])
+overmap_map(struct map *map, int pfd[2], int flags)
 {
         int   ret;
         void *p;
@@ -361,6 +365,15 @@ overmap_map(struct map *map, int pfd[2])
          * going to be able to read. */
         if (SREM_RET_OK != (ret = remap_map(map, pfd, (uintptr_t)p)))
                 return ret;
+
+        /* Hide the ELFness, if this is the beginning of the library file and
+         * we're asked to. */
+        if ((0 != (flags & SREM_SRS_RMELF)) && (0 == map->off) &&
+                        (ELFMAG[0] == ((char *)p)[0]) &&
+                        (ELFMAG[1] == ((char *)p)[1]) &&
+                        (ELFMAG[2] == ((char *)p)[2]) &&
+                        (ELFMAG[3] == ((char *)p)[3]))
+                bzero(p, SELFMAG);
 
         /* Set permissions to what they should be. */
         if (-1 == mprotect(p, map->length, map->prot))

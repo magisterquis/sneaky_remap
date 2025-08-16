@@ -18,10 +18,8 @@
 
 /* Flags for sneaky_remap_start. */
 #define SREM_SRS_DLOPEN (1<<0) /* dlopen(3) ourselves. */
-#define SREM_SRS_UNLINK (1<<2) /* unlink(2) ourselves. */
-
-/* Unimplemented flags for sneaky_remap_start. */
 #define SREM_SRS_RMELF  (1<<1) /* Clear \x7fELF from mapped ELF headers. */
+#define SREM_SRS_UNLINK (1<<2) /* unlink(2) ourselves. */
 
 /* Return values. */
 #define SREM_RET_OK          0 /* All went well. */

@@ -34,6 +34,11 @@ Quickstart (C)
    anything with the loaded library.
    Something along the lines the following should do it:
    ```c
+   #include <err.h>
+   #include <stddef.h>
+
+   #include "sneaky_remap.h"
+
    static void __attribute__((constructor))
    ctor(void)
    {
@@ -57,7 +62,19 @@ Quickstart (C)
 
 Quickstart (Go)
 ---------------
-TODO: Finish this
+1. Import [`github.com/magisterquis/sneaky_remap`](https://pkg.go.dev/github.com/magisterquis/sneaky_remap).
+   ```go
+   package main
+
+   import (
+   	_ "github.com/magisterquis/sneaky_remap_preview"
+   )
+
+   func main() {}
+   ```
+2. Test thoroughly.
+   Make sure to look at `/proc/pid/maps` and friends before and after the
+   library is loaded.
 
 Theory
 ------
@@ -99,9 +116,7 @@ Caveats
 2. The library is still visible for a short amount of time; if anything's
    watching calls to `open(2)` or `mmap(2)` they'll see us, though we may well
    win a race between being noticed and forensic data being collected.
-3. The mapped pages still have the ELF magic number in the beginning.  This may
-   be fixable with an as-yet unimplemented `SREM_SRS_RMELF`.
-4. When linked into a shared object file written in Go, `sneaky_remap_start`
+3. When linked into a shared object file written in Go, `sneaky_remap_start`
    must be called before the Go runtime starts.
    The easy way to do this is to use a constructor function with a lowish
    priority, e.g.
@@ -113,7 +128,7 @@ Caveats
    }
    ```
    The Go package does this for you.
-5. Pages which were unreadable when the library was loaded (as happens on
+4. Pages which were unreadable when the library was loaded (as happens on
    aarch64), will no longer cause a SIGBUS when read after hiding.
 
 API
@@ -145,6 +160,8 @@ returned, `errno` may be used to determine the underlying error.
    [`sneaky_remap.h`](./sneaky_remap.h).
     - `SREM_SRS_DLOPEN` - Calls `dlopen(3)` on the library with `RTLD_NOW` to
       prevent unwanted unloads (e.g. when using Bash's `enable`).
+    - `SREM_SRS_RMELF`  - Zeros out the four-byte ELF magic at the start of
+      the mapped library.
     - `SREM_SRS_UNLINK` - `unlink(2)`s the shared object file after hiding it.
 
 #### Return Values
@@ -162,7 +179,7 @@ Value                  | Description
 `SREM_RET_BIGPATH`     | A path in `/proc/self/maps` was too long.
 
 
-### Compile-time configuration
+### Compile-time configuration (C)
 The following macros may be set at compile-time.
 
 #### `SREM_DEBUG`
@@ -177,10 +194,30 @@ The maximum number of file-backed memory mappings inspected in
 `/proc/pid/maps`.
 Increase this if `sneaky_remap_start` returns `SREM_RET_TOOMANYMAPS`.
 
+### Compile-time configuration (Go)
+When using [`github.com/magisterquis/sneaky_remap`](https://pkg.go.dev/github.com/magisterquis/sneaky_remap) in a Go library compile-time configuration requires
+another layer of indirection and takes the form of setting the following with
+the `CGO_CFLAGS` environment variable.
+
+An example can be found in
+[`examples/cgo_compile_time_config`](./examples/cgo_compile_time_config).
+all of the above [C compile-time
+
+#### `SREM_CGO_START_ROUTINE`
+The name of a function to pass via [`sneaky_remap_start`](#the-function)'s
+`start_routine` argument.  The `void *arg` argument is always nil.  Defaults
+to `NULL`.
+
+#### `SREM_CGO_START_FLAGS`
+Flags passed via [`sneaky_remap_start`](#the-function)'s `flags` argument.
+Defaults to `0`.
+
 Testing
 -------
 Have a look in [`t/`](./t/) and [`examples/`](./examples/) for ideas for
 testing libraries which use `sneaky_remap`.
+
+TODO: Work out dependencies
 
 Testing `sneaky_remap` itself requires quite a few dependencies:
 - bmake (because I still haven't learned how to GNU Make)
