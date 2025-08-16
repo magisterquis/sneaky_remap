@@ -4,7 +4,7 @@
 # Make sure our README isn't missing anything
 # By J. Stuart McMurray
 # Created 20250809
-# Last Modified 20250809
+# Last Modified 20250811
 
 set -euo pipefail
 
@@ -20,8 +20,9 @@ set -A DIRS $({
 } | sort -u)
 NDIRS=${#DIRS[@]}
 
+tap_plan $((3 + (2 * $NDIRS)))
+
 # Make sure they are.
-tap_plan $((1 + (2 * $NDIRS)))
 tap_isnt "$NDIRS" 0 "Found examples directories" "$0" $LINENO
 for DIR in "${DIRS[@]}"; do
         # Is the directory a directory?
@@ -37,6 +38,13 @@ for DIR in "${DIRS[@]}"; do
         set -e
         tap_ok $RET "$DIR listed in $README" "$0" $LINENO
 done
+
+# Make sure lines are sorted
+START=$(egrep -n -- '^-+\|-+$' "$README" | cut -f 1 -d :)
+tap_isnt "$START" "" "Found the start of the list" "$0" $LINENO
+GOT=$(tail -n "+$(($START +1))" "$README")
+WANT=$(echo "$GOT" | sort -u)
+tap_is "$GOT" "$WANT" "Directory list is sorted" "$0" $LINENO
 
 
 # vim: ft=sh
