@@ -121,7 +121,7 @@ Caveats
    The easy way to do this is to use a constructor function with a lowish
    priority, e.g.
    ```c
-   static void __attribute__((constructor (1000)))
+   static void __attribute__((constructor (5000)))
    ctor(void)
    {
            /* Call sneaky_remap_start */

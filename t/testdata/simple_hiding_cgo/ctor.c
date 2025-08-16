@@ -3,7 +3,7 @@
  * Library constructor
  * By J. Stuart McMurray
  * Cretaed 20250730
- * Last Modified 20250730
+ * Last Modified 20250816
  */
 
 #include <stdio.h>
@@ -11,7 +11,7 @@
 
 #include "sneaky_remap.h"
 
-static void __attribute__((constructor (1000)))
+static void __attribute__((constructor (5000)))
 ctor(void)
 {
         int ret;

@@ -5,7 +5,7 @@ package main
  * See if we've correctly hidden ourselves
  * By J. Stuart McMurray
  * Created 20250730
- * Last Modified 20250730
+ * Last Modified 20250815
  */
 
 import (
@@ -25,7 +25,7 @@ import (
 //
 // /* ctor saves a copy of our maps after we're loaded but before we're
 //  * hidden. */
-// static void __attribute__((constructor (1000)))
+// static void __attribute__((constructor (5000)))
 // ctor(void)
 // {
 //         system("cat </proc/$PPID/maps >maps_during");
