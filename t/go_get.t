@@ -4,13 +4,13 @@
 # Test hiding with go get
 # By J. Stuart McMurray
 # Created 20250730
-# Last Modified 20250730
+# Last Modified 20250816
 
 set -euo pipefail
 
 . t/test_loader.subr
 
-tap_plan 14
+tap_plan 17
 
 # Build and load the library.
 WANT='In init
@@ -45,5 +45,12 @@ set +e
 RET=$?
 set -e
 tap_ok $RET "Self-removing library unlinked itself" "$0" $LINENO
+
+# Try with all the flags.
+! [[ -f "$LIB" ]] || rm "$LIB"
+export CGO_CFLAGS='-DSREM_CGO_START_FLAGS=SREM_SRS_DLOPEN|SREM_SRS_RMELF|SREM_SRS_UNLINK'
+WANT='In init
+In sowait'
+test_loader "$WANT" $LINENO
 
 # vim: ft=sh
