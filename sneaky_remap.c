@@ -43,12 +43,12 @@
 } while (0)
 #define DWARN(...)  warn(__VA_ARGS__)
 #define DWARNX(...) warnx(__VA_ARGS__)
-#define D_RET_ERRNO(...) do { \
-        int saved_errno;      \
-        saved_errno = errno;  \
-        DWARN(__VA_ARGS__);   \
-        errno = saved_errno;  \
-        return SREM_RET_ERRNO;   \
+#define D_RET_ERRNO(...) do {  \
+        int saved_errno;       \
+        saved_errno = errno;   \
+        DWARN(__VA_ARGS__);    \
+        errno = saved_errno;   \
+        return SREM_RET_ERRNO; \
 } while (0)
 
 #else /* #ifdef SREM_DEBUG */
