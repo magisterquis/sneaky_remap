@@ -127,7 +127,8 @@ Caveats
            /* Call sneaky_remap_start */
    }
    ```
-   The Go package does this for you.
+   The [Go package](https://pkg.go.dev/github.com/magisterquis/sneaky_remap)
+   does this for you.
 4. Pages which were unreadable when the library was loaded (as happens on
    aarch64), will no longer cause a SIGBUS when read after hiding.
 
@@ -158,8 +159,8 @@ returned, `errno` may be used to determine the underlying error.
 1. `start_routine` and `arg`- Passed to `pthread_create(3)`.
 2. `flags` - A bitwise OR of the following constants, defined in
    [`sneaky_remap.h`](./sneaky_remap.h).
-    - `SREM_SRS_DLOPEN` - Calls `dlopen(3)` on the library with `RTLD_NOW` to
-      prevent unwanted unloads (e.g. when using Bash's `enable`).
+    - `SREM_SRS_DLOPEN` - Calls `dlopen(3)` on the library with `RTLD_NODELETE`
+      to prevent unwanted unloads (e.g. when using Bash's `enable`).
     - `SREM_SRS_RMELF`  - Zeros out the four-byte ELF magic at the start of
       the mapped library.
     - `SREM_SRS_UNLINK` - `unlink(2)`s the shared object file after hiding it.

@@ -108,7 +108,7 @@ sneaky_remap_start(void *(start_routine)(void *), void *arg, int flags)
         /* Increase the count of things which have us open, to keep bash from
          * unloading us. */
         if (flags & SREM_SRS_DLOPEN) {
-                if (NULL == dlopen(pmap.path, RTLD_NOW)) {
+                if (NULL == dlopen(pmap.path, RTLD_LAZY|RTLD_NODELETE)) {
                         DWARNX("dlopen %s: %s", pmap.path, dlerror());
                         return SREM_RET_EDLOPEN;
                 } else
