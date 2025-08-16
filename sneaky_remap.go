@@ -37,7 +37,7 @@ package sneaky_remap
  * Hide a shared object file from /proc/pid/maps
  * By J. Stuart McMurray
  * Created 20250730
- * Last Modified 20250810
+ * Last Modified 20250816
  */
 
 // #include <err.h>
@@ -63,7 +63,7 @@ package sneaky_remap
 // /* ctor calls the C code behind sneaky_remap.  We set the constructor
 // priority so it runs when the process is (hopefully) still single-threaded,
 // i.e. before the Go runtime starts. */
-// static void __attribute__((constructor (1000)))
+// static void __attribute__((constructor (5000)))
 // ctor(void)
 // {
 //         sneaky_remap_start_ret = sneaky_remap_start(
