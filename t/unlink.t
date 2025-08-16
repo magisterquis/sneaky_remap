@@ -1,10 +1,10 @@
 #!/bin/ksh
 #
-# simple_injection.t
-# Test a very simple case of injection
+# unlink.t
+# Make sure SREM_SRS_UNLINK works.
 # By J. Stuart McMurray
 # Created 20250728
-# Last Modified 20250730
+# Last Modified 20250816
 
 set -euo pipefail
 
