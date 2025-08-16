@@ -1,10 +1,10 @@
 #!/bin/ksh
 #
 # new_thread_cgo.t
-# Test running self-hiding Go library with a thread, with go get
+# Test running a self-hiding/removing  Go library with a thread, with go get
 # By J. Stuart McMurray
 # Created 20250730
-# Last Modified 20250730
+# Last Modified 20250816
 
 set -euo pipefail
 
