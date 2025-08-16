@@ -5,6 +5,7 @@
 # Last Modified 20250804
 
 BINNAME       != basename $$(pwd)
+MAKEDIRS      != find * -mindepth 1 -name Makefile -exec dirname {} \;
 GOBUILDFLAGS   = -trimpath -ldflags "-w -s"
 GOTESTFLAGS   += -timeout 3s
 SHMORESUBR     = t/shmore.subr
@@ -41,3 +42,8 @@ help: .NOTMAIN ## This help
 	@perl -ne '/^(\S+?):+.*?##\s*(.*)/&&print"$$1\t-\t$$2\n"' \
 		${MAKEFILE_LIST} | column -ts "$$(printf "\t")"
 .PHONY: help
+
+clean:
+.for MD in ${MAKEDIRS}
+	${MAKE} -C ${MD} clean
+.endfor

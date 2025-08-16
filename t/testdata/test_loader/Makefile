@@ -2,9 +2,14 @@
 # Build the test loader
 # By J. Stuart McMurray
 # Created 20250728
-# Last Modified 20250728
+# Last Modified 20250816
 
 .include "../../common.mk"
 
-test_loader: test_loader.c
+TEST_LOADER=test_loader
+
+${TEST_LOADER}: test_loader.c
 	${CC} ${CFLAGS} -o $@ ${>:M*c}
+
+clean:
+	rm -f ${TEST_LOADER}
