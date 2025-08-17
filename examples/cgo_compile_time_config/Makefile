@@ -27,6 +27,6 @@ ${LIB}: cgo_compile_time_config.go
 	CGO_CFLAGS=${CGO_CFLAGS:Q} go build -buildmode c-shared -o $@
 
 clean:
-	rm -f ${LIB}
+	rm -f ${LIB} cgo_compile_time_config.h
 .PHONY: clean
 
