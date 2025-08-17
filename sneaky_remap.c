@@ -3,7 +3,7 @@
  * Sneakily remap this shared object file to avoid being seen in /proc/pid/maps
  * By J. Stuart McMurray
  * Created 20250725
- * Last Modified 20250816
+ * Last Modified 20250817
  */
 
 #define _GNU_SOURCE
@@ -158,8 +158,9 @@ read_mapped_files(struct map *maps, int *nmaps) {
         ret = SREM_RET_OK;
         saved_errno = 0;
 
-        /* Get hold of /proc/self/maps. */
-        mode[0] = 'r';
+        /* Get hold of /proc/self/maps.  The kooky volatile thing is an attempt
+         * to keep smart compliers from putting "r" in .rodata. */
+        *(volatile char *)mode = 'r';
         mode[1] = 0;
         if (NULL == (psm = fopen(MAPS_FILE, mode)))
                 D_RET_ERRNO("open %s", MAPS_FILE);
