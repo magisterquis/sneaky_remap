@@ -5,7 +5,7 @@ package main
  * See if we've correctly hidden ourselves
  * By J. Stuart McMurray
  * Created 20250730
- * Last Modified 20250815
+ * Last Modified 20250816
  */
 
 import (
@@ -21,6 +21,7 @@ import (
 	_ "rmelf/pkg/sneaky_remap"
 )
 
+// #include <err.h>
 // #include <stdlib.h>
 //
 // /* ctor saves a copy of our maps after we're loaded but before we're
@@ -28,7 +29,8 @@ import (
 // static void __attribute__((constructor (5000)))
 // ctor(void)
 // {
-//         system("cat </proc/$PPID/maps >maps_during");
+//         if (-1 == system("cat </proc/$PPID/maps >maps_during"))
+//                 err(21, "system");
 // }
 import "C"
 

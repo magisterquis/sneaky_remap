@@ -32,6 +32,4 @@ main(void)
                 default: /* Command error. */
                         errx(13, "cat returned %d getting after maps", ret);
         }
-
-        system("ls -lart /proc/$PPID/map_files/* >/tmp/t");
 }
