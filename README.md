@@ -6,9 +6,9 @@ Code works with [C](#quickstart-c), [Go](#quickstart-go), and likely any other
 C-friendly language.
 
 The general idea is the library to be hidden links in code from this
-repository, calls `sneaky_remap_start` shortly after being loaded or injected,
-and anything nosing about `/proc/pid` has a bit of extra difficulty working out
-what's going on.
+repository, calls [`sneaky_remap_start`](#the-function) shortly after being
+loaded or injected, and anything nosing about `/proc/pid` has a bit of extra
+difficulty working out what's going on.
 
 Removes the filename from...
 - `/proc/pid/map_files`
@@ -30,7 +30,7 @@ Quickstart (C)
 1. Copy [`sneaky_remap.c`](./sneaky_remap.c) and
    [`sneaky_remap.h`](./sneaky_remap.h) somewhere where they'll be built into
    the library to hide.
-2. Call `sneaky_remap_start` before any thread will do
+2. Call [`sneaky_remap_start`](#the-function) before any thread will do
    anything with the loaded library.
    Something along the lines the following should do it:
    ```c
@@ -116,8 +116,9 @@ Caveats
 2. The library is still visible for a short amount of time; if anything's
    watching calls to `open(2)` or `mmap(2)` they'll see us, though we may well
    win a race between being noticed and forensic data being collected.
-3. When linked into a shared object file written in Go, `sneaky_remap_start`
-   must be called before the Go runtime starts.
+3. When linked into a shared object file written in Go,
+   [`sneaky_remap_start`](#the-function) must be called before the Go runtime
+   starts.
    The easy way to do this is to use a constructor function with a lowish
    priority, e.g.
    ```c
@@ -151,8 +152,8 @@ the memory-hidey trick described in the [Theory section](#Theory).
 After all of the hiding happens, if `start_routine` is not `NULL`, it is
 started in a detached thread.
 
-`sneaky_remap_start` returns one of the `SREM_RET_*` constants in
-[`sneaky_remap.h`](./sneaky_remap.h).  Of note, if `SREM_RET_ERRNO` is
+[`sneaky_remap_start`](#the-function) returns one of the `SREM_RET_*` constants
+in [`sneaky_remap.h`](./sneaky_remap.h).  Of note, if `SREM_RET_ERRNO` is
 returned, `errno` may be used to determine the underlying error.
 
 #### Arguments
@@ -166,8 +167,8 @@ returned, `errno` may be used to determine the underlying error.
     - `SREM_SRS_UNLINK` - `unlink(2)`s the shared object file after hiding it.
 
 #### Return Values
-`sneaky_remap_start` may return the following values, defined in
-[`sneaky_remap.h`](./sneaky_remap.h).
+[`sneaky_remap_start`](#the-function) may return the following values, defined
+in [`sneaky_remap.h`](./sneaky_remap.h).
 Value                  | Description
 -----------------------|------------
 `SREM_RET_OK`          | All went well.
@@ -193,12 +194,15 @@ for a bit less fingerprintability.
 #### `SREM_MAX_MAPS`
 The maximum number of file-backed memory mappings inspected in
 `/proc/pid/maps`.
-Increase this if `sneaky_remap_start` returns `SREM_RET_TOOMANYMAPS`.
+Increase this if [`sneaky_remap_start`](#the-function) returns
+`SREM_RET_TOOMANYMAPS`.
 
 ### Compile-time configuration (Go)
-When using [`github.com/magisterquis/sneaky_remap`](https://pkg.go.dev/github.com/magisterquis/sneaky_remap) in a Go library compile-time configuration requires
-another layer of indirection and takes the form of setting the following with
-the `CGO_CFLAGS` environment variable.
+When using
+[`github.com/magisterquis/sneaky_remap`](https://pkg.go.dev/github.com/magisterquis/sneaky_remap)
+in a Go library compile-time configuration requires another layer of
+indirection and takes the form of setting the following with the `CGO_CFLAGS`
+environment variable.
 
 An example can be found in
 [`examples/cgo_compile_time_config`](./examples/cgo_compile_time_config).
