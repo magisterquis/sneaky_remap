@@ -4,7 +4,7 @@
 # Make sure our README isn't missing anything
 # By J. Stuart McMurray
 # Created 20250809
-# Last Modified 20250811
+# Last Modified 20250816
 
 set -euo pipefail
 
@@ -33,14 +33,14 @@ for DIR in "${DIRS[@]}"; do
         tap_ok $RET "$EDIR/$DIR exists" "$0" $LINENO
         # Is it in the readme?
         set +e
-        egrep -q '^\[`'"$DIR"'`\]' "$README"
+        grep -Eq '^\[`'"$DIR"'`\]' "$README"
         RET=$?
         set -e
         tap_ok $RET "$DIR listed in $README" "$0" $LINENO
 done
 
 # Make sure lines are sorted
-START=$(egrep -n -- '^-+\|-+$' "$README" | cut -f 1 -d :)
+START=$(grep -En -- '^-+\|-+$' "$README" | cut -f 1 -d :)
 tap_isnt "$START" "" "Found the start of the list" "$0" $LINENO
 GOT=$(tail -n "+$(($START +1))" "$README")
 WANT=$(echo "$GOT" | sort -u)
