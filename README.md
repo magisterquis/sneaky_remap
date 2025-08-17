@@ -30,7 +30,7 @@ Quickstart (C)
 1. Copy [`sneaky_remap.c`](./sneaky_remap.c) and
    [`sneaky_remap.h`](./sneaky_remap.h) somewhere where they'll be built into
    the library to hide.
-2. Call [`sneaky_remap_start`](./sneaky_remap.h#L44) before any thread will do
+2. Call `sneaky_remap_start` before any thread will do
    anything with the loaded library.
    Something along the lines the following should do it:
    ```c
@@ -218,21 +218,38 @@ Testing
 Have a look in [`t/`](./t/) and [`examples/`](./examples/) for ideas for
 testing libraries which use `sneaky_remap`.
 
-TODO: Work out dependencies
+While using `sneaky_remap` is as simple as adding a line to a Go `import` block
+or adding a couple of files to a C project, testing `sneaky_remap` itself is
+a bit more involved, but more or less boils down to making sure the right
+dependencies are in place, running `bmake`, and going for a cup of tea.  It's
+less slow the second time after Go caches things.
 
-Testing `sneaky_remap` itself requires quite a few dependencies:
-- bmake (because I still haven't learned how to GNU Make)
-- cc
-- go
-- ksh
-- prove
-- staticcheck
+The dependencies:
+- [bmake](https://www.crufty.net/help/sjg/bmake.html)
+  (because I still haven't learned how to GNU Make)
+- A C compiler
+  ([`gcc`](https://gcc.gnu.org)/[`clang`](https://clang.llvm.org)/etc.)
+- [Go](https://go.dev)
+- [ksh](https://man.openbsd.org/ksh)
+  ([ksh93](https://github.com/ksh93/ksh) is fine)
+- [prove](https://perldoc.perl.org/prove)
+- [Staticcheck](https://staticcheck.dev)
 
-They can often be installed with one of the below:
+Most of the above can often be installed with one of the below
 ```sh
-apt install ...
-yum install ...
+# Debianish Linux distributions
+apt install bmake build-essential git ksh
+# RedHatish Linux distributions
+yum -y group install development-tools && yum -y install bmake perl ksh
 ```
+Go can usually be installed via the package manager as well, but is sometimes
+quite out of date.  YMMV.
+
+Once Go is intalled, staticcheck can be installed with
+```sh
+go install honnef.co/go/tools/cmd/staticcheck@latest
+```
+
 
 Run `bmake` to start the tests.  They'll probably take quite a bit of time to
 run the first time.
