@@ -4,7 +4,7 @@
 # Make sure we have no go dependencies
 # By J. Stuart McMurray
 # Created 20250730
-# Last Modified 20250804
+# Last Modified 20250906
 
 set -euo pipefail
 
@@ -47,6 +47,5 @@ done
 # Shouldn't have any go.sum files.
 GOT=$(find . -name go.sum)
 tap_is "$GOT" "" "No go.sum files" "$0" $LINENO
-
 
 # vim: ft=sh
