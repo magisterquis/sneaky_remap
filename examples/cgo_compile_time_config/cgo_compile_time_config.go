@@ -6,7 +6,7 @@ package main
  * Use the SREM_CGO_* macros
  * By J. Stuart McMurray
  * Created 20250811
- * Last Modified 20250811
+ * Last Modified 20250906
  */
 
 import (
@@ -14,7 +14,7 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/magisterquis/sneaky_remap_preview"
+	_ "github.com/magisterquis/sneaky_remap"
 )
 
 //export HelloAndCloseFour

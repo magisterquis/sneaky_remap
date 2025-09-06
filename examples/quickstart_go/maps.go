@@ -5,7 +5,7 @@ package main
  * Dump the memory maps
  * By J. Stuart McMurray
  * Created 20250810
- * Last Modified 20250811
+ * Last Modified 20250906
  */
 
 import (
@@ -13,7 +13,7 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/magisterquis/sneaky_remap_preview"
+	_ "github.com/magisterquis/sneaky_remap"
 )
 
 // init copies /proc/self/maps to stdout.
