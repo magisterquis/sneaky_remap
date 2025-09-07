@@ -206,7 +206,6 @@ environment variable.
 
 An example can be found in
 [`examples/cgo_compile_time_config`](./examples/cgo_compile_time_config).
-all of the above [C compile-time
 
 #### `SREM_CGO_START_ROUTINE`
 The name of a function to pass via [`sneaky_remap_start`](#the-function)'s
