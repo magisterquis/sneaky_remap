@@ -16,7 +16,7 @@ LOADER_STDERR=loader_stderr # File with loader's stderr
 MAPS_AFTER=maps_after       # /proc/self/maps after loading $LIB
 MAPS_BEFORE=maps_before     # /proc/self/maps before loading $LIB
 
-# test_load tests loading a library.  It copies the files from
+# test_loader tests loading a library.  It copies the files from
 # t/testdata/TESTNAME, where TESTNAME is derived from $0 (hence the POSIX-style
 # function) to a temporary directory along with sneaky_remap.{c,h},
 # t/common.mk, and the test loader from t/testdata/test_loader, builds the
@@ -32,9 +32,9 @@ MAPS_BEFORE=maps_before     # /proc/self/maps before loading $LIB
 # If $1 is set, the loader's output will be checked to see if it matches.  If
 # not, the loader's output will be sent to the function's stdout.
 #
-# test_load emits two TAP lines or three if $1 is set.  Calls to tap_plan must
-# account for this.  tap_load also sets the EXIT trap to remove a temporary
-# directory.  Callers must also account for this.
+# test_loader emits two TAP lines, or three if $1 is set.  Calls to tap_plan
+# must account for this.  tap_load also sets the EXIT trap to remove a
+# temporary directory.  Callers must also account for this.
 #
 # After returning, $TMPD will hold the path to the temporary directory in which
 # the library was built and loader was run and $LOADER_STDERR holds the name of
