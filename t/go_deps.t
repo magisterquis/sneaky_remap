@@ -4,7 +4,7 @@
 # Make sure we have no go dependencies
 # By J. Stuart McMurray
 # Created 20250730
-# Last Modified 20250906
+# Last Modified 20251005
 
 set -euo pipefail
 
@@ -37,7 +37,7 @@ for F in $FS; do
                 # Go version last
                 read
                 tap_like \
-                        "$REPLY" '^go \d+\.\d+\.\d+$' \
+                        "$REPLY" '^go \d+\.\d+(\.\d+)?$' \
                         "$F - Third line is the Go version"\
                         "$0" $LINENO
         } <"$F"

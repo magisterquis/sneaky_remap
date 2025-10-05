@@ -2,7 +2,7 @@
 # Variables and such common to all test makefiles
 # By J. Stuart McMurray
 # Created 20250728
-# Last Modified 20250730
+# Last Modified 20251005
 
 # Of course...
 .if "-g" == ${CFLAGS}
@@ -25,7 +25,7 @@ CFLAGS +=--pedantic -O2 -Wall -Werror -Wextra -fPIC -ggdb
 .endif
 .endfor
 
-lib.so: lib.go ${SRPKG}/sneaky_remap.{c,h,go}
+lib.so: go.mod lib.go ${SRPKG}/sneaky_remap.{c,h,go}
 	go vet ./...
 	go test ./...
 	staticcheck ./...
