@@ -3,7 +3,7 @@
 # Run a simple test
 # By J. Stuart McMurray
 # Created 20250727
-# Last Modified 20250730
+# Last Modified 20251005
 
 set -euo pipefail
 
@@ -19,7 +19,7 @@ MAPS_BEFORE=maps_before     # /proc/self/maps before loading $LIB
 # test_load tests loading a library.  It copies the files from
 # t/testdata/TESTNAME, where TESTNAME is derived from $0 (hence the POSIX-style
 # function) to a temporary directory along with sneaky_remap.{c,h},
-# t/comman.mk, and the test loader from t/testdata/test_loader, builds the
+# t/common.mk, and the test loader from t/testdata/test_loader, builds the
 # library with bmake lib.so, and loads it with test_loader.
 #
 # The compile-time-settable macro SRSFLAGS can be used to pass flags to
