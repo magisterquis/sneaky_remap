@@ -4,7 +4,7 @@
 # Make sure we're using our origin in Go files
 # By J. Stuart McMurray
 # Created 20250810
-# Last Modified 20250810
+# Last Modified 20251017
 
 set -euo pipefail
 
@@ -19,11 +19,9 @@ tap_plan $((1 + 2 + ${#GOFILES[@]}))
 # Work out our own origin.
 ORIGIN=$(
         perl -ne '
-                next unless $_ eq "[remote \"origin\"]\n";
-                $_=<>;
-                s/(^[^@]+@|\.git$)//g;
-                s/:/\//;
-                print
+                next unless m,^\s+url\s+=\s+(?:git@|https://)(github.com.*)\.git$,;
+                print $1 =~ s,:,/,r;
+                exit 0;
         ' .git/config
 )
 tap_isnt "$ORIGIN" "" "Found origin URL" "$0" $LINENO
