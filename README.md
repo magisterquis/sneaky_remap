@@ -243,7 +243,7 @@ Most of the above can often be installed with one of the below
 # Debianish Linux distributions
 apt install bmake build-essential git ksh
 # RedHatish Linux distributions
-yum -y group install development-tools && yum -y install bmake perl ksh
+yum -y group install 'development tools' && yum -y install bmake perl ksh
 ```
 Go can usually be installed via the package manager as well, but is sometimes
 quite out of date.  YMMV.
