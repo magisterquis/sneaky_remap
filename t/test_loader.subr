@@ -3,7 +3,7 @@
 # Run a simple test
 # By J. Stuart McMurray
 # Created 20250727
-# Last Modified 20251005
+# Last Modified 20251018
 
 set -euo pipefail
 
@@ -107,7 +107,6 @@ test_loader() {
                         "No new mapped files after loading library" \
                         "$_lineno"
         fi
-
 
         # If we have a WANT, see if we GOT it.
         if [[ -n "$_want" ]]; then
