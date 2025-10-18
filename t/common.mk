@@ -2,7 +2,7 @@
 # Variables and such common to all test makefiles
 # By J. Stuart McMurray
 # Created 20250728
-# Last Modified 20251005
+# Last Modified 20251018
 
 # Of course...
 .if "-g" == ${CFLAGS}
@@ -14,16 +14,12 @@ CFLAGS +=--pedantic -O2 -Wall -Werror -Wextra -fPIC -ggdb
 
 .if exists(lib.go) # Building a Go library
 
-# If we haven't yet, turn sneaky_remap into a package
-.BEGIN:
+# Turns sneaky_remap into a package
+${SRPKG}/sneaky_remap.{c,h,go}:
 .if ! exists(${SRPKG})
-	mkdir -p ${SRPKG}/
+	mkdir -p ${@D}/
 .endif
-.for FN in sneaky_remap.c sneaky_remap.h sneaky_remap.go
-.if exists(./${FN})
-	mv ${FN} ${SRPKG}/
-.endif
-.endfor
+	mv ${@F} $@
 
 lib.so: go.mod lib.go ${SRPKG}/sneaky_remap.{c,h,go}
 	go vet ./...
