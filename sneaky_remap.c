@@ -3,7 +3,7 @@
  * Sneakily remap this shared object file to avoid being seen in /proc/pid/maps
  * By J. Stuart McMurray
  * Created 20250725
- * Last Modified 20250817
+ * Last Modified 20251102
  */
 
 #define _GNU_SOURCE
@@ -127,16 +127,14 @@ sneaky_remap_start(void *(start_routine)(void *), void *arg, int flags)
 
         /* Start the thread going. */
         if (NULL != start_routine) {
-                if (-1 == pthread_attr_init(&attr))
+                if (0 != (errno = pthread_attr_init(&attr)))
                         D_RET_ERRNO("pthread_attr_init");
-                if (-1 == pthread_attr_setdetachstate(&attr,
-                                        PTHREAD_CREATE_DETACHED))
+                if (0 != (errno = pthread_attr_setdetachstate(&attr,
+                                        PTHREAD_CREATE_DETACHED)))
                         D_RET_ERRNO("pthread_attr_setdetachstate");
-                if (-1 == (ret = pthread_create(&tid, &attr, start_routine,
-                                                arg))) {
-                        errno = ret;
+                if (0 != (errno = pthread_create(&tid, &attr, start_routine,
+                                                arg)))
                         D_RET_ERRNO("pthread_create");
-                }
         }
 
         return SREM_RET_OK;
