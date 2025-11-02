@@ -4,7 +4,7 @@
 # Check that debug output looks right in the happy case
 # By J. Stuart McMurray
 # Created 20250728
-# Last Modified 20250809
+# Last Modified 20251102
 
 set -euo pipefail
 
@@ -27,7 +27,8 @@ set +e
 GOBIN=$TMPD go install \
         -ldflags "-w -s" \
         -trimpath \
-        github.com/magisterquis/curlrevshell@bettertemplates >$TMPD/$GOUT 2>&1
+        github.com/magisterquis/curlrevshell@v0.0.1-beta.7.0.20251101195007-9aa2af6bdcbd \
+        >$TMPD/$GOUT 2>&1
 RET=$?
 set -e
 tap_ok $RET "curlrevshell installed ok" "$0" $LINENO
