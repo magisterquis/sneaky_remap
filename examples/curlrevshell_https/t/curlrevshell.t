@@ -27,7 +27,7 @@ set +e
 GOBIN=$TMPD go install \
         -ldflags "-w -s" \
         -trimpath \
-        github.com/magisterquis/curlrevshell@v0.0.1-beta.7.0.20251101195007-9aa2af6bdcbd \
+        github.com/magisterquis/curlrevshell@v0.0.1-beta.8
         >$TMPD/$GOUT 2>&1
 RET=$?
 set -e
